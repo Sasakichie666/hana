@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>风雅牌 - 花札风格收集游戏</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js">
+    </script>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --gold: #c9a96e;
+            --red: #8b1a1a;
+            --panel: #2d2318;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: var(--bg);
+            font-family: 'Noto Serif SC', 'SimSun', serif;
+            min-height: 100vh;
+            color: #e8dcc8;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        #app {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+        #top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: #2d1f10;
+            border: 2px solid #5a3d20;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        #top-bar h1 {
+            font-size: 1.6em;
+            color: #e8c84c;
+        }
+        #room-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        #room-id-display {
+            font-size: 1.3em;
+            color: #e8c84c;
+            background: #1a0f05;
+            padding: 6px 16px;
+            border-radius: 8px;
+            border: 2px solid #5a3d20;
+        }
+        #deck-count-display {
+            font-size: 1em;
+            color: #e8c84c;
+            background: #1a0f05;
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 2px solid #5a3d20;
+        }
+        #scores-bar {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .score-item {
+            background: #1a0f05;
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 2px solid #5a3d20;
+            color: #e8c84c;
+            font-size: 0.9em;
+        }
+        .btn {
+            padding: 8px 18px;
+            border: 2px solid #8b6914;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #4a3520;
+            color: #e0c888;
+            font-family: inherit;
+            font-size: 0.95em;
+        }
+        .btn:hover {
+            background: #5e4428;
+            border-color: #c9a040;
+        }
+        .btn.accent {
+            background: #8b1a1a;
+            border-color: #c04040;
+        }
+        .btn.gold {
+            background: #b8860b;
+            border-color: #d4a030;
+            font-weight: bold;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        select,
+        input[type="text"] {
+            padding: 8px 14px;
+            border: 2px solid #5a3d20;
+            border-radius: 8px;
+            background: #1a0f05;
+            color: #e8c84c;
+            font-family: inherit;
+            text-align: center;
+        }
+        input[type="text"] {
+            width: 100px;
+        }
+        #game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .opponent-area {
+            background: rgba(30, 18, 8, 0.7);
+            border: 2px solid #3d2818;
+            border-radius: 12px;
+            padding: 12px;
+        }
+        .opponent-cards {
+            display: flex;
+            gap: 6px;
+            min-height: 50px;
+        }
+        .opponent-card {
+            width: 42px;
+            height: 60px;
+            background: #8b1a1a;
+            border: 2px solid #c9a96e;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+        }
+        .opponent-melded {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .opponent-melded .melded-category {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.7em;
+        }
+        .opponent-melded .melded-category h5 {
+            font-size: 0.7em;
+            color: #c9a96e;
+            white-space: nowrap;
+            margin: 0;
+            border-bottom: none;
+        }
+        .opponent-melded .melded-category .cards-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+        .meld-card-mini {
+            width: 32px;
+            height: 44px;
+            background: #f5e6d3;
+            border: 1px solid #8b6914;
+            border-radius: 3px;
+            font-size: 0.55em;
+            color: #2c1810;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #field-section {
+            background: rgba(25, 15, 5, 0.8);
+            border: 3px solid #5a3d20;
+            border-radius: 16px;
+            padding: 16px;
+        }
+        #field-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            min-height: 90px;
+        }
+        .card {
+            width: 72px;
+            height: 104px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 3px solid #8b6914;
+            background: #f5e6d3;
+            color: #2c1810;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72em;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+            position: relative;
+            transition: border-color 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-8px);
+            border-color: #e8c84c;
+        }
+        .card.selected {
+            border-color: #ff4444;
+            box-shadow: 0 0 25px rgba(255, 60, 60, 0.7);
+        }
+        .card.can-pair {
+            border-color: #ff4444;
+            box-shadow: 0 0 15px rgba(255, 60, 60, 0.5);
+        }
+        .card .card-icon {
+            font-size: 1.8em;
+        }
+        .card .card-name {
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+        .card .card-type-label {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.5em;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 1px 3px;
+            border-radius: 2px;
+            line-height: 1.2;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            writing-mode: vertical-lr;
+            text-orientation: upright;
+            max-height: 90%;
+        }
+        .card-stack {
+            position: relative;
+            display: inline-block;
+        }
+        .card-stack .card-under {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            opacity: 0.5;
+            transform: rotate(-2deg);
+        }
+        #hand-section {
+            background: rgba(20, 10, 3, 0.9);
+            border: 3px solid #5a3d20;
+            border-radius: 16px;
+            padding: 14px;
+        }
+        #hand-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        .hand-info {
+            margin-top: 8px;
+            font-size: 0.8em;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .hand-info .hand-orphan {
+            color: #ff8c8c;
+        }
+        .hand-info .hand-combos {
+            color: #e8c84c;
+        }
+        #melded-section {
+            background: rgba(20, 10, 3, 0.7);
+            border: 2px solid #4a3020;
+            border-radius: 12px;
+            padding: 10px;
+        }
+        .melded-category {
+            margin-bottom: 8px;
+        }
+        .melded-category h5 {
+            font-size: 0.8em;
+            color: #c9a96e;
+            margin-bottom: 4px;
+            border-bottom: 1px solid #4a3020;
+            padding-bottom: 2px;
+        }
+        .melded-category .cards-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        #my-combos {
+            margin-top: 8px;
+            font-size: 0.8em;
+            color: #e8c84c;
+        }
+        #orphan-info {
+            margin-top: 8px;
+            font-size: 0.8em;
+        }
+        .orphan-melded {
+            color: #ffaa55;
+        }
+        #score-panel {
+            background: rgba(20, 10, 3, 0.8);
+            border: 2px solid #5a3d20;
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            gap: 20px;
+        }
+        #log {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            max-width: 350px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid #3d2818;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 0.7em;
+            color: #a09080;
+            z-index: 100;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+        .modal {
+            background: #2d1f10;
+            border: 3px solid #8b6914;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            max-width: 500px;
+        }
+        .agari-detail {
+            text-align: left;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+        .agari-detail .score-formula {
+            font-size: 1.2em;
+            margin: 10px 0;
+            color: #e8c84c;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="top-bar">
+            <h1>🪭 和风花牌</h1>
+            <div id="room-info">
+                <span id="room-id-display">未连接</span>
+                <span id="deck-count-display">牌堆: 0</span>
+                <select id="player-count-select"><option value="2">2人对战</option><option value="3">3人对战</option></select>
+                <input type="text" id="join-room-input" placeholder="房间号" maxlength="4" style="text-transform:uppercase">
+                <button class="btn" id="btn-join">加入房间</button>
+                <button class="btn accent" id="btn-create">创建房间</button>
+                <button class="btn" id="btn-start" disabled>开始游戏</button>
+                <button class="btn gold" id="btn-koikoi" style="display:none;">KoiKoi! 继续</button>
+                <button class="btn" id="btn-declare" style="display:none;">宣告达成</button>
+            </div>
+            <div id="scores-bar"></div>
+        </div>
+        <div id="game-area" style="display:none;">
+            <div id="opponents-container"></div>
+            <div id="field-section"><h3>🏵️ 场上牌</h3><div id="field-cards"></div></div>
+            <div id="hand-section">
+                <h3>🃏 我的手牌</h3>
+                <div id="hand-cards"></div>
+                <div class="hand-info">
+                    <span class="hand-orphan">手牌孤牌: <span id="hand-orphan-list">无</span></span>
+                    <span class="hand-combos">手牌组合: <span id="hand-combos-list">暂无</span></span>
+                </div>
+            </div>
+            <div id="melded-section">
+                <h4>📋 我的副露</h4>
+                <div id="melded-cards"></div>
+                <div id="my-combos"></div>
+                <div id="orphan-info">
+                    <span class="orphan-melded">副露孤牌: <span id="melded-orphan-list">无</span></span>
+                </div>
+            </div>
+            <div id="score-panel"><span>🏆 得分预览</span><span id="score-value">副露0 × 手牌0 = 总分0</span></div>
+        </div>
+        <div id="log"></div>
+    </div>
+    <div id="modal-container"></div>
+
+    <script>
+        (function() {
+            // 音效引擎
+            const AudioEngine = {
+                ctx: null,
+                init() { if (!this.ctx) this.ctx = new(window.AudioContext || window.webkitAudioContext)(); },
+                play(f, d, t, v = 0.05) {
+                    this.init();
+                    const o = this.ctx.createOscillator();
+                    const g = this.ctx.createGain();
+                    o.type = t;
+                    o.frequency.value = f;
+                    g.gain.setValueAtTime(v, this.ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + d);
+                    o.connect(g);
+                    g.connect(this.ctx.destination);
+                    o.start();
+                    o.stop(this.ctx.currentTime + d);
+                },
+                uiClick() { this.play(800, 0.05, 'sine', 0.03); },
+                cardSelect() { this.play(400, 0.1, 'sine', 0.04); },
+                pair() { 
+                    this.play(500, 0.2, 'triangle', 0.06);
+                    setTimeout(() => this.play(700, 0.15, 'triangle', 0.05), 80); 
+                },
+                agari() { 
+                    this.play(400, 0.3, 'triangle', 0.08);
+                    setTimeout(() => this.play(800, 0.4, 'sine', 0.1), 200);
+                },
+            };
+
+            const CARD_DEFS = [
+                { id: 'm01_hana_01', name: '松', month: 1, types: ['hana'], icon: '🌲', season: 'winter' },
+                { id: 'm01_hana_02', name: '松', month: 1, types: ['hana'], icon: '🌲', season: 'winter' },
+                { id: 'm01_kemono', name: '鹤', month: 1, types: ['kemono'], icon: '🦩', season: 'winter' },
+                { id: 'm02_hana_01', name: '梅', month: 2, types: ['hana'], icon: '🌸', season: 'spring' },
+                { id: 'm02_hana_02', name: '梅', month: 2, types: ['hana'], icon: '🌸', season: 'spring' },
+                { id: 'm02_kemono', name: '莺', month: 2, types: ['kemono'], icon: '🐦', season: 'spring' },
+                { id: 'm03_hana_01', name: '樱', month: 3, types: ['hana'], icon: '💮', season: 'spring' },
+                { id: 'm03_hana_02', name: '樱', month: 3, types: ['hana'], icon: '💮', season: 'spring' },
+                { id: 'm03_mono', name: '樱下幕', month: 3, types: ['mono'], icon: '🎪', season: 'spring' },
+                { id: 'm04_hana_01', name: '藤', month: 4, types: ['hana'], icon: '🪻', season: 'spring' },
+                { id: 'm04_hana_02', name: '藤', month: 4, types: ['hana'], icon: '🪻', season: 'spring' },
+                { id: 'm04_kemono', name: '杜鹃', month: 4, types: ['kemono'], icon: '🕊️', season: 'summer' },
+                { id: 'm05_hana_01', name: '菖', month: 5, types: ['hana'], icon: '🌿', season: 'summer' },
+                { id: 'm05_hana_02', name: '菖', month: 5, types: ['hana'], icon: '🌿', season: 'summer' },
+                { id: 'm05_mono_01', name: '八桥', month: 5, types: ['mono'], icon: '🌉', season: 'summer' },
+                { id: 'm05_mono_02', name: '五月雨', month: 5, types: ['mono'], icon: '🌧️', season: 'summer' },
+                { id: 'm06_hana_01', name: '牡丹', month: 6, types: ['hana'], icon: '🏵️', season: 'summer' },
+                { id: 'm06_hana_02', name: '牡丹', month: 6, types: ['hana'], icon: '🏵️', season: 'summer' },
+                { id: 'm06_kemono', name: '蝶', month: 6, types: ['kemono'], icon: '🦋', season: 'summer' },
+                { id: 'm07_hana_01', name: '萩', month: 7, types: ['hana'], icon: '🌾', season: 'summer' },
+                { id: 'm07_hana_02', name: '萩', month: 7, types: ['hana'], icon: '🌾', season: 'summer' },
+                { id: 'm07_kemono', name: '猪', month: 7, types: ['kemono'], icon: '🐗', season: 'autumn' },
+                { id: 'm08_hana_01', name: '芒', month: 8, types: ['hana'], icon: '🌾', season: 'autumn' },
+                { id: 'm08_hana_02', name: '芒', month: 8, types: ['hana'], icon: '🌾', season: 'autumn' },
+                { id: 'm08_kemono', name: '雁', month: 8, types: ['kemono'], icon: '🪿', season: 'autumn' },
+                { id: 'm08_mono', name: '满月', month: 8, types: ['mono'], icon: '🌕', season: 'autumn' },
+                { id: 'm09_hana_01', name: '菊', month: 9, types: ['hana'], icon: '🌼', season: 'autumn' },
+                { id: 'm09_hana_02', name: '菊', month: 9, types: ['hana'], icon: '🌼', season: 'autumn' },
+                { id: 'm09_mono', name: '酒', month: 9, types: ['mono'], icon: '🍶', season: 'autumn' },
+                { id: 'm10_hana_01', name: '红叶', month: 10, types: ['hana'], icon: '🍁', season: 'autumn' },
+                { id: 'm10_hana_02', name: '红叶', month: 10, types: ['hana'], icon: '🍁', season: 'autumn' },
+                { id: 'm10_kemono', name: '鹿', month: 10, types: ['kemono'], icon: '🦌', season: 'winter' },
+                { id: 'm11_hana_01', name: '柳', month: 11, types: ['hana'], icon: '🌿', season: 'winter' },
+                { id: 'm11_hana_02', name: '柳', month: 11, types: ['hana'], icon: '🌿', season: 'winter' },
+                { id: 'm11_kemono', name: '燕', month: 11, types: ['kemono'], icon: '🐦', season: 'winter' },
+                { id: 'm12_hana_01', name: '桐', month: 12, types: ['hana'], icon: '🌳', season: 'winter' },
+                { id: 'm12_hana_02', name: '桐', month: 12, types: ['hana'], icon: '🌳', season: 'winter' },
+                { id: 'm12_kemono', name: '凤', month: 12, types: ['kemono'], icon: '🦚', season: 'winter' },
+                { id: 'tanzaku_spring', name: '春·歌', month: 0, types: ['bun'], icon: '📜', season: 'spring' },
+                { id: 'tanzaku_summer', name: '夏·句', month: 0, types: ['bun'], icon: '📜', season: 'summer' },
+                { id: 'tanzaku_autumn', name: '秋·吟', month: 0, types: ['bun'], icon: '📜', season: 'autumn' },
+                { id: 'tanzaku_winter', name: '冬·诗', month: 0, types: ['bun'], icon: '📜', season: 'winter' },
+                { id: 'toy_crane_01', name: '千纸鹤', month: 0, types: ['asobi', 'mono'], icon: '🪈' },
+                { id: 'toy_crane_02', name: '千纸鹤', month: 0, types: ['asobi', 'mono'], icon: '🪈' },
+                { id: 'toy_cat_01', name: '招财猫', month: 0, types: ['asobi', 'mono'], icon: '🐱' },
+                { id: 'toy_cat_02', name: '招财猫', month: 0, types: ['asobi', 'mono'], icon: '🐱' },
+                { id: 'toy_daruma_01', name: '达摩', month: 0, types: ['asobi', 'mono'], icon: '🎎' },
+                { id: 'toy_daruma_02', name: '达摩', month: 0, types: ['asobi', 'mono'], icon: '🎎' },
+                { id: 'toy_dog_01', name: '犬张子', month: 0, types: ['asobi', 'mono'], icon: '🐶' },
+                { id: 'toy_dog_02', name: '犬张子', month: 0, types: ['asobi', 'mono'], icon: '🐶' },
+                { id: 'mask_noh', name: '能面', month: 0, types: ['men', 'mono'], icon: '🎭' },
+                { id: 'mask_oni', name: '鬼面', month: 0, types: ['men', 'mono'], icon: '👹', pairAny: true },
+                { id: 'mask_kitsune', name: '狐面', month: 0, types: ['men', 'mono'], icon: '🦊' },
+                { id: 'mask_tengu', name: '天狗面', month: 0, types: ['men', 'mono'], icon: '👺' },
+                { id: 'shrine_torii', name: '鸟居', month: 0, types: ['mono'], icon: '⛩️' },
+                { id: 'shrine_ema', name: '绘马', month: 0, types: ['mono'], icon: '🪵' },
+                { id: 'shrine_omamori', name: '御守', month: 0, types: ['mono'], icon: '🎀' },
+                { id: 'shrine_lantern', name: '灯笼', month: 0, types: ['mono'], icon: '🏮' },
+                { id: 'oiran_oiran', name: '花魁', month: 0, types: ['special'], icon: '👘', isOiran: true },
+                { id: 'oiran_umbrella', name: '伞', month: 0, types: ['mono'], icon: '☂️' },
+                { id: 'oiran_geta', name: '木屐', month: 0, types: ['mono'], icon: '👡' },
+                { id: 'oiran_fan', name: '折扇', month: 0, types: ['mono'], icon: '🪭' },
+                { id: 'garden_lantern', name: '石灯笼', month: 0, types: ['mono'], icon: '🪨' },
+                { id: 'garden_pond', name: '池塘', month: 0, types: ['mono'], icon: '🌊' },
+                { id: 'inner_bonsai', name: '盆栽', month: 0, types: ['hana', 'mono'], icon: '🪴' },
+                { id: 'inner_armor', name: '大铠', month: 0, types: ['mono'], icon: '🛡️' },
+                { id: 'inner_screen', name: '屏风', month: 0, types: ['mono'], icon: '🖼️' },
+                { id: 'special_bamboo', name: '竹', month: 0, types: ['hana'], icon: '🎋' },
+                { id: 'special_orchid', name: '兰', month: 0, types: ['hana'], icon: '🌺' },
+            ];
+
+            const GameState = {
+                deck: [],
+                fieldCards: [],
+                players: [],
+                currentPlayerIndex: 0,
+                myPlayerId: null,
+                myHand: [],
+                myMelded: [],
+                selectedHandCard: null,
+                phase: 'waiting',
+                koikoiPending: false,
+                isHost: false,
+                peer: null,
+                connections: {},
+                roomId: null,
+                playerNames: {},
+                _oppHands: {},
+                _oppMelded: {},
+                maxPlayers: 2,
+                pendingCover: null,
+                scores: {},
+                lastConfirmedAgariId: null,
+                playerKoikoiUsed: {},
+                playerPrevCombos: {},
+            };
+
+            function getCardDef(id) { return CARD_DEFS.find(c => c.id === id); }
+            function shuffle(arr) { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+            function generateRoomCode() { const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let s = ''; for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)]; return s; }
+
+            function canPair(a, b) {
+                if (a === b) return false;
+                const da = getCardDef(a), db = getCardDef(b);
+                if (!da || !db) return false;
+                if (da.name === db.name) return false;
+                if (da.isOiran || db.isOiran || da.pairAny || db.pairAny) return true;
+                if (da.month > 0 && db.month > 0 && da.month === db.month) return true;
+                for (const ta of da.types) for (const tb of db.types) if (ta === tb) return true;
+                if (da.types.includes('bun') && db.types.includes('hana') && da.season && db.season === da.season && db.month > 0) return true;
+                if (db.types.includes('bun') && da.types.includes('hana') && db.season && da.season === db.season && da.month > 0) return true;
+                return false;
+            }
+
+            function getFieldTopIds() { return GameState.fieldCards.map(fc => typeof fc === 'string' ? fc : fc.top).filter(Boolean); }
+            function findFieldPair(handId) { return getFieldTopIds().filter(fid => canPair(handId, fid)); }
+            function hasAnyPair(handIds) { const tops = getFieldTopIds(); return handIds.some(hid => tops.some(fid => canPair(hid, fid))); }
+
+            function detectCombos(cardIds) {
+                const combos = [];
+                const cardSet = new Set(cardIds);
+                const has = id => cardSet.has(id);
+                const defs = cardIds.map(id => getCardDef(id)).filter(Boolean);
+                const monthGroups = {};
+                defs.forEach(d => {
+                    if (d.month > 0) {
+                        if (!monthGroups[d.month]) monthGroups[d.month] = { hana: [], kemono: [], mono: [] };
+                        if (d.types.includes('hana')) monthGroups[d.month].hana.push(d.id);
+                        if (d.types.includes('kemono')) monthGroups[d.month].kemono.push(d.id);
+                        if (d.types.includes('mono')) monthGroups[d.month].mono.push(d.id);
+                    }
+                });
+                for (const [m, grp] of Object.entries(monthGroups)) {
+                    for (const hid of grp.hana) for (const kid of grp.kemono) if (has(hid) && has(kid)) combos.push({ name: `${m}月花兽`, score: 1, cards: [hid, kid] });
+                    for (const hid of grp.hana) for (const mid of grp.mono) if (has(hid) && has(mid)) combos.push({ name: `${m}月花物`, score: 1, cards: [hid, mid] });
+                    if (parseInt(m) === 8 && has('m08_mono') && has('m08_kemono')) {
+                        combos.push({ name: '月下雁', score: 1, cards: ['m08_mono', 'm08_kemono'] });
+                    }
+                }
+                // 十二花组合：每个月至少有一张花牌
+                const monthsWithHana = new Set();
+                for (const d of defs) {
+                    if (d.types.includes('hana') && d.month > 0) {
+                        monthsWithHana.add(d.month);
+                    }
+                }
+                if (monthsWithHana.size >= 12) {
+                    combos.push({ name: '十二花', score: 2, cards: [] });
+                }
+
+                const uniqHana = new Set(defs.filter(d => d.types.includes('hana')).map(d => d.name)); if (uniqHana.size >= 6) combos.push({ name: '六花', score: 1, cards: [] });
+                const uniqMono = new Set(defs.filter(d => d.types.includes('mono')).map(d => d.name)); if (uniqMono.size >= 6) combos.push({ name: '六物', score: 1, cards: [] });
+                const uniqKemono = new Set(defs.filter(d => d.types.includes('kemono')).map(d => d.name)); if (uniqKemono.size >= 6) combos.push({ name: '六兽', score: 2, cards: [] });
+                const tanzaku = ['tanzaku_spring', 'tanzaku_summer', 'tanzaku_autumn', 'tanzaku_winter']; if (tanzaku.every(has)) combos.push({ name: '四季册', score: 4, cards: tanzaku });
+                const toySets = [['toy_crane_01', 'toy_crane_02'], ['toy_cat_01', 'toy_cat_02'], ['toy_daruma_01', 'toy_daruma_02'], ['toy_dog_01', 'toy_dog_02']]; if (toySets.every(ids => ids.some(has))) combos.push({ name: '四玩具', score: 4, cards: [] });
+                const shrine = ['shrine_torii', 'shrine_ema', 'shrine_omamori', 'shrine_lantern']; if (shrine.every(has)) combos.push({ name: '神社初诣', score: 4, cards: shrine });
+                const oiranSet = ['oiran_oiran', 'oiran_umbrella', 'oiran_geta', 'oiran_fan']; if (oiranSet.every(has)) combos.push({ name: '花魁道中', score: 6, cards: oiranSet });
+                if (has('garden_lantern') && has('garden_pond') && (has('m01_hana_01') || has('m01_hana_02'))) combos.push({ name: '外庭', score: 3, cards: [...['garden_lantern', 'garden_pond'], has('m01_hana_01') ? 'm01_hana_01' : 'm01_hana_02'] });
+                const inner = ['inner_bonsai', 'inner_armor', 'inner_screen']; if (inner.every(has)) combos.push({ name: '内室', score: 3, cards: inner });
+                if (has('mask_kitsune') && has('shrine_torii')) combos.push({ name: '狐面+鸟居', score: 2, cards: ['mask_kitsune', 'shrine_torii'] });
+                if (has('mask_noh') && has('oiran_fan')) combos.push({ name: '能面+折扇', score: 2, cards: ['mask_noh', 'oiran_fan'] });
+                if (has('m09_mono') && has('m03_mono')) combos.push({ name: '酒+樱下幕', score: 2, cards: ['m09_mono', 'm03_mono'] });
+                if (has('m08_mono') && has('m03_mono')) combos.push({ name: '月+樱下幕', score: 2, cards: ['m08_mono', 'm03_mono'] });
+
+                const springFlowers = ['m02_hana_01','m02_hana_02','m03_hana_01','m03_hana_02','m04_hana_01','m04_hana_02'];
+                const summerFlowers = ['m05_hana_01','m05_hana_02','m06_hana_01','m06_hana_02','m07_hana_01','m07_hana_02'];
+                const autumnFlowers = ['m08_hana_01','m08_hana_02','m09_hana_01','m09_hana_02','m10_hana_01','m10_hana_02'];
+                const winterFlowers = ['m11_hana_01','m11_hana_02','m12_hana_01','m12_hana_02','m01_hana_01','m01_hana_02'];
+
+                const hasSpring = (has('m02_hana_01')||has('m02_hana_02')) && (has('m03_hana_01')||has('m03_hana_02')) && (has('m04_hana_01')||has('m04_hana_02'));
+                const hasSummer = (has('m05_hana_01')||has('m05_hana_02')) && (has('m06_hana_01')||has('m06_hana_02')) && (has('m07_hana_01')||has('m07_hana_02'));
+                const hasAutumn = (has('m08_hana_01')||has('m08_hana_02')) && (has('m09_hana_01')||has('m09_hana_02')) && (has('m10_hana_01')||has('m10_hana_02'));
+                const hasWinter = (has('m11_hana_01')||has('m11_hana_02')) && (has('m12_hana_01')||has('m12_hana_02')) && (has('m01_hana_01')||has('m01_hana_02'));
+
+                if (hasSpring) {
+                    const cards = defs.filter(d => springFlowers.includes(d.id)).map(d => d.id);
+                    combos.push({ name: '春花', score: 2, cards });
+                    if (has('tanzaku_spring')) combos.push({ name: '春花+春·歌', score: 2, cards: [...cards, 'tanzaku_spring'] });
+                }
+                if (hasSummer) {
+                    const cards = defs.filter(d => summerFlowers.includes(d.id)).map(d => d.id);
+                    combos.push({ name: '夏花', score: 2, cards });
+                    if (has('tanzaku_summer')) combos.push({ name: '夏花+夏·句', score: 2, cards: [...cards, 'tanzaku_summer'] });
+                }
+                if (hasAutumn) {
+                    const cards = defs.filter(d => autumnFlowers.includes(d.id)).map(d => d.id);
+                    combos.push({ name: '秋花', score: 2, cards });
+                    if (has('tanzaku_autumn')) combos.push({ name: '秋花+秋·吟', score: 2, cards: [...cards, 'tanzaku_autumn'] });
+                }
+                if (hasWinter) {
+                    const cards = defs.filter(d => winterFlowers.includes(d.id)).map(d => d.id);
+                    combos.push({ name: '冬花', score: 2, cards });
+                    if (has('tanzaku_winter')) combos.push({ name: '冬花+冬·诗', score: 2, cards: [...cards, 'tanzaku_winter'] });
+                }
+                if (hasSpring && hasSummer) {
+                    const cards = [...defs.filter(d => springFlowers.includes(d.id)), ...defs.filter(d => summerFlowers.includes(d.id))].map(d => d.id);
+                    combos.push({ name: '春夏相连', score: 3, cards });
+                }
+                if (hasAutumn && hasWinter) {
+                    const cards = [...defs.filter(d => autumnFlowers.includes(d.id)), ...defs.filter(d => winterFlowers.includes(d.id))].map(d => d.id);
+                    combos.push({ name: '秋冬相连', score: 3, cards });
+                }
+
+                const bunCards = [];
+                if (has('tanzaku_spring')) bunCards.push('tanzaku_spring');
+                if (has('tanzaku_summer')) bunCards.push('tanzaku_summer');
+                if (has('tanzaku_autumn')) bunCards.push('tanzaku_autumn');
+                if (has('tanzaku_winter')) bunCards.push('tanzaku_winter');
+                if (has('m09_mono') && bunCards.length > 0) {
+                    combos.push({ name: '对酒当歌', score: 1, cards: [bunCards[0], 'm09_mono'] });
+                }
+
+                if (has('mask_tengu') && (has('m10_hana_01') || has('m10_hana_02'))) {
+                    const redLeaf = has('m10_hana_01') ? 'm10_hana_01' : 'm10_hana_02';
+                    combos.push({ name: '天狗面+红叶', score: 2, cards: [redLeaf, 'mask_tengu'] });
+                }
+
+                if (has('m02_kemono') && has('m04_kemono') && has('m11_kemono')) combos.push({ name: '莺鹃燕', score: 3, cards: ['m02_kemono', 'm04_kemono', 'm11_kemono'] });
+                if (has('m07_kemono') && has('m10_kemono') && has('m06_kemono')) combos.push({ name: '猪鹿蝶', score: 6, cards: ['m07_kemono', 'm10_kemono', 'm06_kemono'] });
+                if (has('m01_kemono') && has('m12_kemono')) combos.push({ name: '鹤凤双瑞', score: 3, cards: ['m01_kemono', 'm12_kemono'] });
+                if (has('oiran_oiran') && has('oiran_umbrella') && has('m05_mono_01') && has('m05_mono_02')) combos.push({ name: '伞下雨桥', score: 5, cards: ['oiran_oiran', 'oiran_umbrella', 'm05_mono_01', 'm05_mono_02'] });
+                const masks = ['mask_noh', 'mask_oni', 'mask_kitsune', 'mask_tengu'];
+                if (masks.every(has)) combos.push({ name: '四面具', score: 4, cards: masks });
+                if (has('special_bamboo') && has('tanzaku_autumn')) combos.push({ name: '七夕', score: 2, cards: ['special_bamboo', 'tanzaku_autumn'] });
+                const plum = has('m02_hana_01') || has('m02_hana_02'), orchid = has('special_orchid'), bamboo = has('special_bamboo'), chrys = has('m09_hana_01') || has('m09_hana_02');
+                if (plum && orchid && bamboo && chrys) combos.push({ name: '四君子', score: 6, cards: [] });
+                const matsu = has('m01_hana_01') || has('m01_hana_02'); if (matsu && bamboo && plum) combos.push({ name: '岁寒三友', score: 3, cards: [] });
+                const seen = new Set();
+                return combos.filter(c => { const k = c.name + '|' + c.type; if (seen.has(k)) return false; seen.add(k); return true; });
+            }
+
+            function getCoveredCardsForCombo(combo, cardIds) {
+                if (combo.cards && combo.cards.length > 0) return combo.cards;
+                const defs = cardIds.map(id => getCardDef(id)).filter(Boolean);
+                switch (combo.name) {
+                    case '六花': return defs.filter(d => d.types.includes('hana')).map(d => d.id);
+                    case '六物': return defs.filter(d => d.types.includes('mono')).map(d => d.id);
+                    case '六兽': return defs.filter(d => d.types.includes('kemono')).map(d => d.id);
+                    case '四玩具': return defs.filter(d => d.types.includes('asobi')).map(d => d.id);
+                    case '神社初诣': return defs.filter(d => ['shrine_torii','shrine_ema','shrine_omamori','shrine_lantern'].includes(d.id)).map(d => d.id);
+                    case '花魁道中': return defs.filter(d => ['oiran_oiran','oiran_umbrella','oiran_geta','oiran_fan'].includes(d.id)).map(d => d.id);
+                    case '外庭': return defs.filter(d => ['garden_lantern','garden_pond'].includes(d.id) || d.id.startsWith('m01_hana')).map(d => d.id);
+                    case '内室': return defs.filter(d => ['inner_bonsai','inner_armor','inner_screen'].includes(d.id)).map(d => d.id);
+                    case '四君子': return defs.filter(d => ['m02_hana_01','m02_hana_02','special_orchid','special_bamboo','m09_hana_01','m09_hana_02'].includes(d.id)).map(d => d.id);
+                    case '岁寒三友': return defs.filter(d => d.id.startsWith('m01_hana') || d.id === 'special_bamboo' || d.id.startsWith('m02_hana')).map(d => d.id);
+                    case '十二花': return defs.filter(d => d.types.includes('hana') && d.month > 0).map(d => d.id);
+                    default: return [];
+                }
+            }
+
+            function getOrphanCards(cardIds) {
+                const combos = detectCombos(cardIds);
+                const covered = new Set();
+                for (const combo of combos) {
+                    const cards = getCoveredCardsForCombo(combo, cardIds);
+                    cards.forEach(id => covered.add(id));
+                }
+                return cardIds.filter(id => !covered.has(id));
+            }
+
+            function updateOrphanDisplay() {
+                const handOrphans = getOrphanCards(GameState.myHand);
+                const meldedOrphans = getOrphanCards(GameState.myMelded);
+                document.getElementById('hand-orphan-list').textContent = handOrphans.length ? handOrphans.map(id => getCardDef(id)?.name || '?').join('、') : '无';
+                document.getElementById('melded-orphan-list').textContent = meldedOrphans.length ? meldedOrphans.map(id => getCardDef(id)?.name || '?').join('、') : '无';
+            }
+
+            function updateHandCombosDisplay() {
+                const combos = detectCombos(GameState.myHand);
+                document.getElementById('hand-combos-list').textContent = combos.length > 0 ? combos.map(c => `${c.name}(${c.score}分)`).join(', ') : '暂无';
+            }
+
+            function calculateScores(ids) {
+                const combos = detectCombos(ids);
+                return { combos, totalScore: combos.reduce((s, c) => s + c.score, 0) };
+            }
+
+            function updateScorePreview() {
+                const meldedScore = calculateScores(GameState.myMelded).totalScore;
+                const handScore = calculateScores(GameState.myHand).totalScore;
+                document.getElementById('score-value').textContent = `副露${meldedScore} × 手牌${handScore} = 总分${meldedScore * handScore}`;
+            }
+
+            function checkAgari(handIds, meldedIds) {
+                const meldedCombos = detectCombos(meldedIds);
+                const meldedAllCovered = getOrphanCards(meldedIds).length === 0;
+                const meldedScore = meldedCombos.reduce((s, c) => s + c.score, 0);
+                if (!meldedAllCovered || meldedScore === 0) return { canAgari: false };
+                const handCombos = detectCombos(handIds);
+                const handAllCovered = handIds.length === 0 ? true : getOrphanCards(handIds).length === 0;
+                const handScore = handCombos.reduce((s, c) => s + c.score, 0);
+                const handOk = handAllCovered && (handIds.length === 0 || handScore > 0);
+                return { canAgari: handOk, meldedCombos, handCombos, meldedScore, handScore, totalScore: meldedScore * handScore };
+            }
+
+            function createCardEl(id, isMeld = false, covered = false) {
+                const def = getCardDef(id);
+                const el = document.createElement('div');
+                el.className = 'card';
+                if (isMeld) { el.style.width = '56px'; el.style.height = '80px'; }
+                if (def) {
+                    el.innerHTML = `<span class="card-icon">${def.icon}</span><span class="card-name">${def.name}</span>`;
+                    const typeMap = { hana:'花', kemono:'兽', mono:'物', bun:'文', asobi:'玩', men:'面', special:'特' };
+                    const seasonMap = { spring:'春', summer:'夏', autumn:'秋', winter:'冬' };
+                    const labels = def.types.map(t => typeMap[t] || t);
+                    if (def.types.includes('hana') && def.season && seasonMap[def.season]) {
+                        labels.push(seasonMap[def.season]);
+                    }
+                    const labelText = labels.join('<br>');
+                    const label = document.createElement('span'); 
+                    label.className = 'card-type-label'; 
+                    label.innerHTML = labelText;
+                    if (isMeld) label.style.fontSize = '0.4em';
+                    el.appendChild(label);
+                    if (def.month > 0) {
+                        const badge = document.createElement('span');
+                        badge.style.cssText = 'position:absolute;top:2px;left:2px;font-size:0.5em;color:#8b6914;';
+                        badge.textContent = def.month + '月';
+                        el.appendChild(badge);
+                    }
+                } else el.textContent = '?';
+                el.dataset.cardId = id;
+                if (covered) el.style.opacity = '0.5';
+                return el;
+            }
+
+            function renderField() {
+                const c = document.getElementById('field-cards'); c.innerHTML = '';
+                GameState.fieldCards.forEach((fc, i) => {
+                    let topId, under = null;
+                    if (typeof fc === 'string') topId = fc;
+                    else { topId = fc.top; if (fc.cards?.length) under = fc.cards[fc.cards.length - 1]; }
+                    if (!topId) return;
+                    const wrap = document.createElement('div'); wrap.className = 'card-stack';
+                    if (under) { wrap.appendChild(createCardEl(under, false, true)); }
+                    const top = createCardEl(topId);
+                    if (GameState.selectedHandCard && canPair(GameState.selectedHandCard, topId)) {
+                        top.classList.add('can-pair');
+                    }
+                    top.addEventListener('click', () => onFieldClick(topId, i));
+                    wrap.appendChild(top); c.appendChild(wrap);
+                });
+            }
+
+            function renderHand() {
+                const c = document.getElementById('hand-cards'); c.innerHTML = '';
+                GameState.myHand.forEach(id => {
+                    const el = createCardEl(id);
+                    if (id === GameState.selectedHandCard) el.classList.add('selected');
+                    el.addEventListener('click', () => onHandClick(id));
+                    c.appendChild(el);
+                });
+                updateOrphanDisplay();
+                updateHandCombosDisplay();
+                updateScorePreview();
+            }
+
+            function renderMelded() {
+                const container = document.getElementById('melded-cards');
+                container.innerHTML = '';
+                const cards = [...GameState.myMelded];
+                const categories = {
+                    'hana': { title: '🌸 花', cards: [] },
+                    'kemono': { title: '🐾 兽', cards: [] },
+                    'asobi': { title: '🎎 玩', cards: [] },
+                    'men': { title: '👹 面', cards: [] },
+                    'bun': { title: '📜 文', cards: [] },
+                    'mono': { title: '🏮 物', cards: [] },
+                };
+                cards.forEach(id => {
+                    const def = getCardDef(id);
+                    if (!def) return;
+                    if (def.types.includes('hana')) categories.hana.cards.push(id);
+                    else if (def.types.includes('kemono')) categories.kemono.cards.push(id);
+                    else if (def.types.includes('asobi')) categories.asobi.cards.push(id);
+                    else if (def.types.includes('men')) categories.men.cards.push(id);
+                    else if (def.types.includes('bun')) categories.bun.cards.push(id);
+                    else categories.mono.cards.push(id);
+                });
+                const sortCards = (ids) => ids.sort((a, b) => {
+                    const da = getCardDef(a), db = getCardDef(b);
+                    if (da.month > 0 && db.month > 0) {
+                        if (da.month !== db.month) return da.month - db.month;
+                        return (da.name || '').localeCompare(db.name || '');
+                    }
+                    if (da.month > 0) return -1;
+                    if (db.month > 0) return 1;
+                    return (da.name || '').localeCompare(db.name || '');
+                });
+                for (const [key, cat] of Object.entries(categories)) {
+                    if (cat.cards.length === 0) continue;
+                    cat.cards = sortCards(cat.cards);
+                    const catDiv = document.createElement('div');
+                    catDiv.className = 'melded-category';
+                    catDiv.innerHTML = `<h5>${cat.title} (${cat.cards.length})</h5>`;
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'cards-row';
+                    cat.cards.forEach(id => rowDiv.appendChild(createCardEl(id, true)));
+                    catDiv.appendChild(rowDiv);
+                    container.appendChild(catDiv);
+                }
+                const result = calculateScores(GameState.myMelded);
+                document.getElementById('my-combos').innerHTML = '副露组合: ' + (result.combos.length > 0 ? result.combos.map(c => `${c.name}(${c.score}分)`).join(', ') : '暂无');
+                updateOrphanDisplay();
+                updateScorePreview();
+            }
+
+            function renderOpponentMelded(container, cards) {
+                container.innerHTML = '';
+                const categories = {
+                    'hana': { title: '花', cards: [] },
+                    'kemono': { title: '兽', cards: [] },
+                    'asobi': { title: '玩', cards: [] },
+                    'men': { title: '面', cards: [] },
+                    'bun': { title: '文', cards: [] },
+                    'mono': { title: '物', cards: [] },
+                };
+                cards.forEach(id => {
+                    const def = getCardDef(id);
+                    if (!def) return;
+                    if (def.types.includes('hana')) categories.hana.cards.push(id);
+                    else if (def.types.includes('kemono')) categories.kemono.cards.push(id);
+                    else if (def.types.includes('asobi')) categories.asobi.cards.push(id);
+                    else if (def.types.includes('men')) categories.men.cards.push(id);
+                    else if (def.types.includes('bun')) categories.bun.cards.push(id);
+                    else categories.mono.cards.push(id);
+                });
+                for (const [key, cat] of Object.entries(categories)) {
+                    if (cat.cards.length === 0) continue;
+                    const catDiv = document.createElement('div');
+                    catDiv.className = 'melded-category';
+                    catDiv.innerHTML = `<h5>${cat.title}</h5>`;
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'cards-row';
+                    cat.cards.forEach(id => {
+                        const mini = document.createElement('div');
+                        mini.className = 'meld-card-mini';
+                        mini.textContent = getCardDef(id)?.name || '?';
+                        rowDiv.appendChild(mini);
+                    });
+                    catDiv.appendChild(rowDiv);
+                    container.appendChild(catDiv);
+                }
+            }
+
+            function renderScoresBar() {
+                const bar = document.getElementById('scores-bar');
+                bar.innerHTML = '';
+                GameState.players.forEach(pid => {
+                    const name = GameState.playerNames[pid] || pid.substring(0, 6);
+                    const score = GameState.scores[pid] || 0;
+                    const item = document.createElement('div');
+                    item.className = 'score-item';
+                    item.textContent = `${name}: ${score}分`;
+                    bar.appendChild(item);
+                });
+            }
+
+            function renderOpponents() {
+                const c = document.getElementById('opponents-container'); c.innerHTML = '';
+                GameState.players.forEach(pid => {
+                    if (pid === GameState.myPlayerId) return;
+                    const d = document.createElement('div'); d.className = 'opponent-area';
+                    const name = GameState.playerNames[pid] || pid.substring(0, 6);
+                    d.innerHTML = `<h3>对手: ${name}</h3><div class="opponent-cards" id="oh-${pid}"></div><div class="opponent-melded" id="om-${pid}"></div>`;
+                    c.appendChild(d);
+                    const hc = document.getElementById(`oh-${pid}`);
+                    const cnt = (GameState._oppHands[pid] || []).length;
+                    for (let i = 0; i < cnt; i++) { const b = document.createElement('div'); b.className = 'opponent-card'; b.textContent = '🪭'; hc.appendChild(b); }
+                    const mc = document.getElementById(`om-${pid}`);
+                    renderOpponentMelded(mc, GameState._oppMelded[pid] || []);
+                });
+            }
+
+            function updateDeckCount() { document.getElementById('deck-count-display').textContent = '牌堆: ' + GameState.deck.length; }
+            function renderAll() { renderField(); renderHand(); renderMelded(); renderOpponents(); renderScoresBar(); updateButtons(); updateDeckCount(); }
+            function updateButtons() {
+                const start = document.getElementById('btn-start');
+                start.disabled = !(GameState.isHost && GameState.phase === 'waiting' && GameState.players.length >= GameState.maxPlayers);
+                start.style.display = (GameState.isHost && GameState.phase === 'waiting') ? '' : 'none';
+                const myTurn = GameState.phase === 'playing' && GameState.players[GameState.currentPlayerIndex] === GameState.myPlayerId;
+                document.getElementById('btn-koikoi').style.display = (GameState.koikoiPending && myTurn) ? '' : 'none';
+                document.getElementById('btn-declare').style.display = (GameState.koikoiPending && myTurn) ? '' : 'none';
+            }
+            function addLog(msg) { const l = document.getElementById('log'); l.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`; l.scrollTop = l.scrollHeight; }
+
+            function showAgariDetailModal(agariData) {
+                const { playerName, meldedCombos, meldedScore, handCombos, handScore, totalScore, agariId, isKoikoi } = agariData;
+                const meldedText = meldedCombos.map(c => `${c.name}(${c.score}分)`).join('、') || '无';
+                const handText = handCombos.map(c => `${c.name}(${c.score}分)`).join('、') || '无';
+                const koikoiNote = isKoikoi ? '<p style="color:#e8c84c;">🔥 KoiKoi 达成，得分翻倍！</p>' : '';
+                const html = `
+                    <div class="modal-overlay"><div class="modal agari-detail">
+                        <h2>🏆 ${playerName} 达成！</h2>
+                        ${koikoiNote}
+                        <p><strong>副露组合:</strong> ${meldedText}</p>
+                        <p><strong>手牌组合:</strong> ${handText}</p>
+                        <div class="score-formula">副露${meldedScore} × 手牌${handScore} = 总分${totalScore}</div>
+                        <button class="btn gold" id="modal-confirm-agari">确认</button>
+                    </div></div>`;
+                document.getElementById('modal-container').innerHTML = html;
+                document.getElementById('modal-confirm-agari').onclick = () => {
+                    document.getElementById('modal-container').innerHTML = '';
+                    if (GameState.isHost) {
+                        confirmAgari(agariData.playerId, totalScore, agariId);
+                    } else {
+                        const hostConn = GameState.connections[GameState.players[0]];
+                        if (hostConn) hostConn.send(JSON.stringify({ type: 'confirmAgari', playerId: agariData.playerId, score: totalScore, agariId }));
+                    }
+                };
+            }
+
+            function confirmAgari(playerId, score, agariId) {
+                if (GameState.lastConfirmedAgariId === agariId) return;
+                GameState.lastConfirmedAgariId = agariId;
+                GameState.scores[playerId] = (GameState.scores[playerId] || 0) + score;
+                resetGame();
+                broadcastState();
+                renderAll();
+            }
+
+            function showDrawModal() {
+                document.getElementById('modal-container').innerHTML = `
+                    <div class="modal-overlay"><div class="modal">
+                        <h2>🍂 本局荒局</h2>
+                        <p>牌已抽完，无人达成役牌，本局作废，无人得分。</p>
+                        <button class="btn gold" id="modal-confirm-draw">确认</button>
+                    </div></div>`;
+                document.getElementById('modal-confirm-draw').onclick = () => {
+                    document.getElementById('modal-container').innerHTML = '';
+                    if (GameState.isHost) {
+                        handleDraw();
+                    } else {
+                        const hostConn = GameState.connections[GameState.players[0]];
+                        if (hostConn) hostConn.send(JSON.stringify({ type: 'confirmDraw' }));
+                    }
+                };
+            }
+
+            function handleDraw() {
+                resetGame();
+                broadcastState();
+                renderAll();
+                addLog('本局荒局，重新开始');
+            }
+
+            function resetGame() {
+                GameState.koikoiPending = false;
+                GameState.selectedHandCard = null;
+                GameState.playerKoikoiUsed = {};
+                GameState.playerPrevCombos = {};
+                const deck = initDeck();
+                const { hands, field, deck: rem } = deal(deck, GameState.players.length);
+                GameState.deck = rem;
+                GameState.fieldCards = field.map(id => id);
+                GameState._oppHands = {};
+                GameState._oppMelded = {};
+                GameState.players.forEach(pid => {
+                    if (pid === GameState.myPlayerId) { GameState.myHand = hands[pid]; GameState.myMelded = []; }
+                    else {
+                        GameState._oppHands[pid] = hands[pid];
+                        GameState._oppMelded[pid] = [];
+                    }
+                });
+                GameState.currentPlayerIndex = Math.floor(Math.random() * GameState.players.length);
+                GameState.phase = 'playing';
+
+                GameState.players.forEach(pid => {
+                    if (pid !== GameState.myPlayerId) {
+                        const conn = GameState.connections[pid];
+                        if (conn) {
+                            conn.send(JSON.stringify({
+                                type: 'newRound',
+                                myHand: GameState._oppHands[pid],
+                                fieldCards: GameState.fieldCards,
+                                currentPlayerIndex: GameState.currentPlayerIndex,
+                                deckCount: GameState.deck.length,
+                                scores: GameState.scores,
+                            }));
+                        }
+                    }
+                });
+            }
+
+            function showAgariModal() {
+                const canKoikoi = !GameState.playerKoikoiUsed[GameState.myPlayerId];
+                const koikoiBtn = canKoikoi ? '<button class="btn" id="modal-koikoi-btn">KoiKoi!</button>' : '';
+                document.getElementById('modal-container').innerHTML = `
+                    <div class="modal-overlay"><div class="modal"><h2>✨ 可以达成！</h2>
+                    <button class="btn gold" id="modal-agari-btn">宣告达成</button>
+                    ${koikoiBtn}
+                    </div></div>`;
+                document.getElementById('modal-agari-btn').onclick = () => { document.getElementById('modal-container').innerHTML = ''; declareAgari(); };
+                if (canKoikoi) {
+                    document.getElementById('modal-koikoi-btn').onclick = () => { document.getElementById('modal-container').innerHTML = ''; doKoiKoi(); };
+                }
+            }
+
+            function declareAgari() {
+                AudioEngine.agari();
+                const myPid = GameState.myPlayerId;
+                const agariCheck = checkAgari(GameState.myHand, GameState.myMelded);
+                const isKoikoi = GameState.playerKoikoiUsed[myPid];
+                const totalScore = isKoikoi ? agariCheck.totalScore * 2 : agariCheck.totalScore;
+                const agariId = Date.now() + '_' + Math.random();
+                const agariData = {
+                    playerName: GameState.playerNames[myPid] || '房主',
+                    playerId: myPid,
+                    meldedCombos: agariCheck.meldedCombos,
+                    handCombos: agariCheck.handCombos,
+                    meldedScore: agariCheck.meldedScore,
+                    handScore: agariCheck.handScore,
+                    totalScore,
+                    agariId,
+                    isKoikoi,
+                };
+                if (GameState.isHost) {
+                    showAgariDetailModal(agariData);
+                    Object.values(GameState.connections).forEach(conn => conn.send(JSON.stringify({ type: 'agariDetail', ...agariData })));
+                } else {
+                    const hostConn = GameState.connections[GameState.players[0]];
+                    if (hostConn) hostConn.send(JSON.stringify({ type: 'playerAction', action: 'agari', playerId: myPid }));
+                }
+            }
+
+            function doKoiKoi() {
+                AudioEngine.uiClick();
+                GameState.koikoiPending = false;
+                const myPid = GameState.myPlayerId;
+                if (GameState.isHost) {
+                    const handCombos = detectCombos(GameState.myHand);
+                    const meldedCombos = detectCombos(GameState.myMelded);
+                    const allNames = new Set([...handCombos.map(c=>c.name), ...meldedCombos.map(c=>c.name)]);
+                    GameState.playerPrevCombos[myPid] = allNames;
+                    GameState.playerKoikoiUsed[myPid] = true;
+                    if (GameState.deck.length) GameState.myHand.push(GameState.deck.pop());
+                    addLog('🔥 KoiKoi!');
+                    Object.values(GameState.connections).forEach(conn => {
+                        conn.send(JSON.stringify({ type: 'koikoiUsed', playerId: myPid }));
+                    });
+                    renderAll();
+                    afterAction(myPid, true);
+                } else {
+                    const hostConn = GameState.connections[GameState.players[0]];
+                    if (hostConn) hostConn.send(JSON.stringify({ type: 'playerAction', action: 'koikoi', playerId: myPid }));
+                }
+            }
+
+            function discardCard(cardId) {
+                if (GameState.koikoiPending) return;
+                const hostConn = GameState.isHost ? null : GameState.connections[GameState.players[0]];
+                const sendDiscard = (coverIndex) => {
+                    if (GameState.isHost) {
+                        GameState.myHand = GameState.myHand.filter(id => id !== cardId);
+                        if (coverIndex >= 0 && GameState.fieldCards.length >= 8) {
+                            const fc = GameState.fieldCards[coverIndex];
+                            if (typeof fc === 'string') GameState.fieldCards[coverIndex] = { cards: [fc], top: cardId };
+                            else { fc.cards.push(fc.top); fc.top = cardId; }
+                        } else GameState.fieldCards.push(cardId);
+                        GameState.pendingCover = null;
+                        renderAll();
+                        sendAction({ action: 'discard', cardId, coverIndex }, 'discard');
+                    } else {
+                        hostConn.send(JSON.stringify({ type: 'playerAction', action: 'discard', cardId, coverIndex, playerId: GameState.myPlayerId }));
+                        GameState.myHand = GameState.myHand.filter(id => id !== cardId);
+                        GameState.pendingCover = null;
+                        renderAll();
+                    }
+                };
+                if (GameState.fieldCards.length < 8) {
+                    sendDiscard(-1);
+                } else {
+                    GameState.pendingCover = cardId;
+                    const html = `<div class="modal-overlay"><div class="modal"><h3>选择覆盖的牌</h3><div>${getFieldTopIds().map((fid,i) => `<button class="btn" onclick="window._cover(${i})">${getCardDef(fid)?.name}</button>`).join('')}</div><button class="btn" onclick="document.getElementById('modal-container').innerHTML=''">取消</button></div></div>`;
+                    document.getElementById('modal-container').innerHTML = html;
+                    window._cover = function(idx) { document.getElementById('modal-container').innerHTML = ''; sendDiscard(idx); };
+                }
+            }
+
+            function sendAction(data, actionType = 'pair') {
+                if (GameState.isHost) {
+                    afterAction(GameState.myPlayerId, false, actionType);
+                } else {
+                    const hostConn = GameState.connections[GameState.players[0]];
+                    if (hostConn) hostConn.send(JSON.stringify({ type: 'playerAction', ...data, playerId: GameState.myPlayerId }));
+                }
+            }
+
+            function afterAction(pid, isKoikoiResult = false, actionType = 'pair') {
+                const isMe = (pid === GameState.myPlayerId);
+                let hand = isMe ? [...GameState.myHand] : [...(GameState._oppHands[pid] || [])];
+                const melded = isMe ? [...GameState.myMelded] : [...(GameState._oppMelded[pid] || [])];
+
+                let agariCheck = checkAgari(hand, melded);
+
+                if (agariCheck.canAgari && GameState.playerKoikoiUsed[pid]) {
+                    const allNames = new Set([
+                        ...agariCheck.meldedCombos.map(c => c.name),
+                        ...agariCheck.handCombos.map(c => c.name)
+                    ]);
+                    const prevNames = GameState.playerPrevCombos[pid] || new Set();
+                    const hasNew = [...allNames].some(name => !prevNames.has(name));
+                    if (!hasNew) {
+                        agariCheck = { canAgari: false };
+                        addLog('KoiKoi后需要增加新的组合才能达成');
+                    }
+                }
+
+                if (agariCheck.canAgari && actionType !== 'discard') {
+                    GameState.koikoiPending = true;
+                    if (isMe) {
+                        showAgariModal();
+                    } else {
+                        const conn = GameState.connections[pid];
+                        if (conn) conn.send(JSON.stringify({ type: 'canAgari', handCombos: agariCheck.handCombos, meldedCombos: agariCheck.meldedCombos, totalScore: agariCheck.totalScore }));
+                    }
+                    renderAll();
+                    return;
+                }
+
+                if (!isKoikoiResult) {
+                    if (GameState.deck.length > 0) {
+                        const drawn = GameState.deck.pop();
+                        if (isMe) {
+                            GameState.myHand.push(drawn);
+                            addLog('抽到 ' + getCardDef(drawn).name);
+                        } else {
+                            GameState._oppHands[pid].push(drawn);
+                            const conn = GameState.connections[pid];
+                            if (conn) conn.send(JSON.stringify({ type: 'drawResult', cards: [drawn] }));
+                        }
+                        hand = isMe ? [...GameState.myHand] : [...(GameState._oppHands[pid] || [])];
+                        const agariCheckAfterDraw = checkAgari(hand, melded);
+                        let finalAgari = agariCheckAfterDraw;
+                        if (finalAgari.canAgari && GameState.playerKoikoiUsed[pid]) {
+                            const allNames = new Set([
+                                ...finalAgari.meldedCombos.map(c => c.name),
+                                ...finalAgari.handCombos.map(c => c.name)
+                            ]);
+                            const prevNames = GameState.playerPrevCombos[pid] || new Set();
+                            const hasNew = [...allNames].some(name => !prevNames.has(name));
+                            if (!hasNew) {
+                                finalAgari = { canAgari: false };
+                            }
+                        }
+                        if (finalAgari.canAgari) {
+                            GameState.koikoiPending = true;
+                            if (isMe) {
+                                showAgariModal();
+                            } else {
+                                const conn = GameState.connections[pid];
+                                if (conn) conn.send(JSON.stringify({ type: 'canAgari', handCombos: finalAgari.handCombos, meldedCombos: finalAgari.meldedCombos, totalScore: finalAgari.totalScore }));
+                            }
+                            renderAll();
+                            return;
+                        }
+                    }
+                    // 检查荒局：牌组为空且当前没有达成
+                    if (GameState.deck.length === 0 && !GameState.koikoiPending) {
+                        if (isMe) {
+                            showDrawModal();
+                        } else {
+                            const conn = GameState.connections[pid];
+                            if (conn) conn.send(JSON.stringify({ type: 'drawGame' }));
+                        }
+                        // 房主处理荒局
+                        if (GameState.isHost) {
+                            // 广播荒局给其他客户端
+                            Object.values(GameState.connections).forEach(c => {
+                                if (c.peer !== pid) c.send(JSON.stringify({ type: 'drawGame' }));
+                            });
+                            // 注意：这里不立即重置，而是等待玩家确认，但简化处理：直接重置
+                            handleDraw();
+                        }
+                        renderAll();
+                        return;
+                    }
+                    GameState.currentPlayerIndex = (GameState.currentPlayerIndex + 1) % GameState.players.length;
+                    broadcastState();
+                    renderAll();
+                } else {
+                    GameState.koikoiPending = false;
+                    const agariCheck = checkAgari(hand, melded);
+                    let finalAgari = agariCheck;
+                    if (finalAgari.canAgari && GameState.playerKoikoiUsed[pid]) {
+                        const allNames = new Set([
+                            ...finalAgari.meldedCombos.map(c => c.name),
+                            ...finalAgari.handCombos.map(c => c.name)
+                        ]);
+                        const prevNames = GameState.playerPrevCombos[pid] || new Set();
+                        const hasNew = [...allNames].some(name => !prevNames.has(name));
+                        if (!hasNew) {
+                            finalAgari = { canAgari: false };
+                        }
+                    }
+                    if (finalAgari.canAgari) {
+                        GameState.koikoiPending = true;
+                        if (isMe) {
+                            showAgariModal();
+                        } else {
+                            const conn = GameState.connections[pid];
+                            if (conn) conn.send(JSON.stringify({ type: 'canAgari', handCombos: finalAgari.handCombos, meldedCombos: finalAgari.meldedCombos, totalScore: finalAgari.totalScore }));
+                        }
+                    } else {
+                        // koikoi后未达成，检查荒局
+                        if (GameState.deck.length === 0 && !GameState.koikoiPending) {
+                            if (isMe) {
+                                showDrawModal();
+                            } else {
+                                const conn = GameState.connections[pid];
+                                if (conn) conn.send(JSON.stringify({ type: 'drawGame' }));
+                            }
+                            if (GameState.isHost) {
+                                Object.values(GameState.connections).forEach(c => {
+                                    if (c.peer !== pid) c.send(JSON.stringify({ type: 'drawGame' }));
+                                });
+                                handleDraw();
+                            }
+                            renderAll();
+                            return;
+                        }
+                        GameState.currentPlayerIndex = (GameState.currentPlayerIndex + 1) % GameState.players.length;
+                        broadcastState();
+                        addLog('KoiKoi后未形成新组合，回合结束');
+                    }
+                    renderAll();
+                }
+            }
+
+            function broadcastState() {
+                if (!GameState.isHost) return;
+                const meldedMap = {};
+                GameState.players.forEach(pid => {
+                    if (pid === GameState.myPlayerId) meldedMap[pid] = [...GameState.myMelded];
+                    else meldedMap[pid] = [...(GameState._oppMelded[pid] || [])];
+                });
+                const data = {
+                    type: 'sync',
+                    fieldCards: GameState.fieldCards,
+                    deckCount: GameState.deck.length,
+                    currentPlayerIndex: GameState.currentPlayerIndex,
+                    phase: GameState.phase,
+                    koikoiPending: GameState.koikoiPending,
+                    players: GameState.players,
+                    playerNames: GameState.playerNames,
+                    oppHandCounts: {},
+                    meldedMap,
+                    scores: GameState.scores,
+                };
+                GameState.players.forEach(pid => {
+                    if (pid !== GameState.myPlayerId) data.oppHandCounts[pid] = (GameState._oppHands[pid] || []).length;
+                });
+                Object.values(GameState.connections).forEach(conn => conn.send(JSON.stringify(data)));
+            }
+
+            function handleSync(data) {
+                GameState.fieldCards = data.fieldCards;
+                GameState.currentPlayerIndex = data.currentPlayerIndex;
+                GameState.phase = data.phase;
+                GameState.koikoiPending = data.koikoiPending || false;
+                GameState.players = data.players;
+                GameState.playerNames = data.playerNames;
+                GameState.scores = data.scores || {};
+                if (data.meldedMap) {
+                    GameState.myMelded = data.meldedMap[GameState.myPlayerId] || [];
+                }
+                GameState._oppMelded = {};
+                if (data.meldedMap) {
+                    GameState.players.forEach(pid => {
+                        if (pid !== GameState.myPlayerId) GameState._oppMelded[pid] = data.meldedMap[pid] || [];
+                    });
+                }
+                GameState._oppHands = {};
+                for (const [pid, cnt] of Object.entries(data.oppHandCounts || {}))
+                    if (pid !== GameState.myPlayerId) GameState._oppHands[pid] = new Array(cnt).fill('?');
+                GameState.deck = new Array(data.deckCount).fill('?');
+                renderAll();
+            }
+
+            function removeFieldCardById(cardId) {
+                for (let i = 0; i < GameState.fieldCards.length; i++) {
+                    const fc = GameState.fieldCards[i];
+                    if (typeof fc === 'string') {
+                        if (fc === cardId) { GameState.fieldCards.splice(i, 1); return true; }
+                    } else {
+                        if (fc.top === cardId) {
+                            if (fc.cards && fc.cards.length > 0) { fc.top = fc.cards.pop(); }
+                            else { GameState.fieldCards.splice(i, 1); }
+                            return true;
+                        }
+                        if (fc.cards && fc.cards.includes(cardId)) {
+                            fc.cards = fc.cards.filter(c => c !== cardId);
+                            if (fc.cards.length === 0) { GameState.fieldCards[i] = fc.top; }
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            function handlePlayerAction(d, conn) {
+                const pid = d.playerId;
+                if (d.action === 'pair') {
+                    const oh = GameState._oppHands[pid] || [];
+                    if (!oh.includes(d.handCardId)) {
+                        addLog(`无效配对请求，玩家${pid}缺少手牌${d.handCardId}`);
+                        const targetConn = GameState.connections[pid];
+                        if (targetConn) broadcastState();
+                        return;
+                    }
+                    GameState._oppHands[pid] = oh.filter(id => id !== d.handCardId);
+                    if (!removeFieldCardById(d.fieldCardId)) removeFieldCard(d.fieldIndex);
+                    if (!GameState._oppMelded[pid]) GameState._oppMelded[pid] = [];
+                    GameState._oppMelded[pid].push(d.handCardId, d.fieldCardId);
+                    afterAction(pid, false, 'pair');
+                } else if (d.action === 'discard') {
+                    const oh = GameState._oppHands[pid] || [];
+                    if (oh.includes(d.cardId)) {
+                        GameState._oppHands[pid] = oh.filter(id => id !== d.cardId);
+                        if (d.coverIndex >= 0 && GameState.fieldCards.length >= 8) {
+                            const fc = GameState.fieldCards[d.coverIndex];
+                            if (typeof fc === 'string') GameState.fieldCards[d.coverIndex] = { cards: [fc], top: d.cardId };
+                            else { fc.cards.push(fc.top); fc.top = d.cardId; }
+                        } else GameState.fieldCards.push(d.cardId);
+                    }
+                    afterAction(pid, false, 'discard');
+                } else if (d.action === 'agari') {
+                    const agariCheck = checkAgari(GameState._oppHands[pid] || [], GameState._oppMelded[pid] || []);
+                    const isKoikoi = GameState.playerKoikoiUsed[pid];
+                    const totalScore = isKoikoi ? agariCheck.totalScore * 2 : agariCheck.totalScore;
+                    const agariId = Date.now() + '_' + Math.random();
+                    const agariData = {
+                        playerName: GameState.playerNames[pid] || pid.substring(0,6),
+                        playerId: pid,
+                        meldedCombos: agariCheck.meldedCombos,
+                        handCombos: agariCheck.handCombos,
+                        meldedScore: agariCheck.meldedScore,
+                        handScore: agariCheck.handScore,
+                        totalScore,
+                        agariId,
+                        isKoikoi,
+                    };
+                    showAgariDetailModal(agariData);
+                    Object.values(GameState.connections).forEach(c => {
+                        if (c.peer !== pid) c.send(JSON.stringify({ type: 'agariDetail', ...agariData }));
+                    });
+                } else if (d.action === 'koikoi') {
+                    const hand = GameState._oppHands[pid] || [];
+                    const melded = GameState._oppMelded[pid] || [];
+                    const handCombos = detectCombos(hand);
+                    const meldedCombos = detectCombos(melded);
+                    const allNames = new Set([...handCombos.map(c=>c.name), ...meldedCombos.map(c=>c.name)]);
+                    GameState.playerPrevCombos[pid] = allNames;
+                    GameState.playerKoikoiUsed[pid] = true;
+
+                    if (GameState.deck.length) {
+                        const drawn = GameState.deck.pop();
+                        GameState._oppHands[pid].push(drawn);
+                        const targetConn = GameState.connections[pid];
+                        if (targetConn) targetConn.send(JSON.stringify({ type: 'drawResult', cards: [drawn] }));
+                    }
+                    Object.values(GameState.connections).forEach(c => {
+                        if (c.peer !== pid) c.send(JSON.stringify({ type: 'koikoiUsed', playerId: pid }));
+                    });
+                    GameState.koikoiPending = false;
+                    afterAction(pid, true);
+                } else if (d.type === 'confirmDraw') {
+                    handleDraw();
+                    broadcastState();
+                    renderAll();
+                } else if (d.type === 'drawGame') {
+                    showDrawModal();
+                }
+            }
+
+            function removeFieldCard(idx) {
+                const fc = GameState.fieldCards[idx];
+                if (!fc) return;
+                if (typeof fc === 'string') GameState.fieldCards.splice(idx, 1);
+                else if (fc.cards?.length) { fc.cards.pop(); GameState.fieldCards[idx] = fc.cards.length ? fc.cards[fc.cards.length - 1] : fc.top; }
+                else GameState.fieldCards.splice(idx, 1);
+            }
+
+            function initDeck() { return shuffle(CARD_DEFS.map(c => c.id)); }
+            function deal(deck, numPlayers) {
+                const hands = {}; GameState.players.forEach(p => hands[p] = []);
+                for (let i = 0; i < 8; i++) GameState.players.forEach(p => hands[p].push(deck.pop()));
+                const field = []; for (let i = 0; i < 8; i++) field.push(deck.pop());
+                return { hands, field, deck };
+            }
+
+            function hostStartGame() {
+                if (!GameState.isHost || GameState.players.length < GameState.maxPlayers) return;
+                GameState.players.forEach(pid => { if (!GameState.scores[pid]) GameState.scores[pid] = 0; });
+                const deck = initDeck();
+                const { hands, field, deck: rem } = deal(deck, GameState.players.length);
+                GameState.deck = rem;
+                GameState.fieldCards = field.map(id => id);
+                GameState._oppHands = {}; GameState._oppMelded = {};
+                const startPlayerIndex = Math.floor(Math.random() * GameState.players.length);
+                GameState.players.forEach(pid => {
+                    if (pid === GameState.myPlayerId) { GameState.myHand = hands[pid]; GameState.myMelded = []; }
+                    else {
+                        GameState._oppHands[pid] = hands[pid]; GameState._oppMelded[pid] = [];
+                        GameState.connections[pid]?.send(JSON.stringify({
+                            type: 'startGame', fieldCards: GameState.fieldCards, myHand: hands[pid],
+                            oppHands: Object.fromEntries(GameState.players.filter(p => p !== pid).map(p => [p, hands[p]])),
+                            currentPlayerIndex: startPlayerIndex, scores: GameState.scores,
+                        }));
+                    }
+                });
+                GameState.currentPlayerIndex = startPlayerIndex;
+                GameState.phase = 'playing';
+                document.getElementById('game-area').style.display = '';
+                renderAll(); addLog('游戏开始！');
+            }
+
+            function setupPeerAsHost(roomCode) {
+                const peerId = 'hanafuda-' + roomCode;
+                GameState.peer = new Peer(peerId, { debug: 0 });
+                GameState.peer.on('open', id => {
+                    GameState.myPlayerId = id; GameState.players = [id]; GameState.playerNames[id] = '房主'; GameState.scores[id] = 0;
+                    document.getElementById('room-id-display').textContent = '房间: ' + roomCode;
+                    document.getElementById('game-area').style.display = '';
+                    renderAll(); addLog(`房间创建成功 ${roomCode} (${GameState.maxPlayers}人)`);
+                });
+                GameState.peer.on('connection', conn => {
+                    conn.on('open', () => {
+                        if (GameState.players.length >= GameState.maxPlayers) { conn.close(); return; }
+                        GameState.connections[conn.peer] = conn;
+                        const newName = '玩家' + GameState.players.length;
+                        GameState.players.push(conn.peer); GameState.playerNames[conn.peer] = newName;
+                        GameState.scores[conn.peer] = 0;
+                        addLog(`${newName} 加入`);
+                        conn.send(JSON.stringify({ type: 'welcome', players: GameState.players, playerNames: GameState.playerNames, roomId: roomCode, yourId: conn.peer, scores: GameState.scores }));
+                        broadcastState(); renderAll();
+                    });
+                    conn.on('data', raw => {
+                        const d = JSON.parse(raw);
+                        if (d.type === 'playerAction') handlePlayerAction(d, conn);
+                        else if (d.type === 'confirmAgari') confirmAgari(d.playerId, d.score, d.agariId);
+                        else if (d.type === 'confirmDraw') {
+                            handleDraw();
+                            broadcastState();
+                            renderAll();
+                        }
+                    });
+                    conn.on('close', () => {
+                        delete GameState.connections[conn.peer];
+                        GameState.players = GameState.players.filter(p => p !== conn.peer);
+                        addLog('玩家离开'); broadcastState(); renderAll();
+                    });
+                });
+                GameState.peer.on('error', err => {
+                    if (err.type === 'unavailable-id') { addLog('房间码被占用，重新生成...'); createRoom(); }
+                    else addLog('错误: ' + err.message);
+                });
+            }
+
+            function setupPeerAsClient() {
+                GameState.peer = new Peer({ debug: 0 });
+                GameState.peer.on('open', id => { GameState.myPlayerId = id; });
+            }
+
+            function createRoom() {
+                if (GameState.peer) GameState.peer.destroy();
+                GameState.isHost = true; GameState.roomId = generateRoomCode();
+                GameState.maxPlayers = parseInt(document.getElementById('player-count-select').value);
+                setupPeerAsHost(GameState.roomId);
+            }
+
+            function joinRoom() {
+                const code = document.getElementById('join-room-input').value.trim().toUpperCase();
+                if (!code) return addLog('请输入房间号');
+                if (GameState.peer) GameState.peer.destroy();
+                GameState.isHost = false; GameState.roomId = code;
+                setupPeerAsClient();
+                GameState.peer.on('open', () => {
+                    const conn = GameState.peer.connect('hanafuda-' + code, { reliable: true });
+                    conn.on('open', () => {
+                        GameState.connections[conn.peer] = conn;
+                        document.getElementById('room-id-display').textContent = '房间: ' + code;
+                        document.getElementById('game-area').style.display = '';
+                        conn.on('data', raw => {
+                            const d = JSON.parse(raw);
+                            if (d.type === 'welcome') {
+                                GameState.players = d.players; GameState.playerNames = d.playerNames;
+                                GameState.myPlayerId = d.yourId; GameState.scores = d.scores || {};
+                                renderAll();
+                            } else if (d.type === 'sync') handleSync(d);
+                            else if (d.type === 'startGame') {
+                                GameState.fieldCards = d.fieldCards; GameState.myHand = d.myHand; GameState.myMelded = [];
+                                GameState._oppHands = d.oppHands; GameState._oppMelded = {}; GameState.currentPlayerIndex = d.currentPlayerIndex;
+                                GameState.phase = 'playing'; GameState.scores = d.scores || GameState.scores;
+                                document.getElementById('game-area').style.display = ''; renderAll(); addLog('游戏开始！');
+                            } else if (d.type === 'newRound') {
+                                GameState.myHand = d.myHand;
+                                GameState.fieldCards = d.fieldCards;
+                                GameState.currentPlayerIndex = d.currentPlayerIndex;
+                                GameState.deck = new Array(d.deckCount).fill('?');
+                                GameState.scores = d.scores || GameState.scores;
+                                GameState.myMelded = [];
+                                GameState.koikoiPending = false;
+                                GameState.selectedHandCard = null;
+                                GameState.phase = 'playing';
+                                renderAll();
+                                addLog('新回合开始');
+                            } else if (d.type === 'drawResult') {
+                                d.cards.forEach(card => GameState.myHand.push(card));
+                                renderAll(); addLog('抽到: ' + d.cards.map(id => getCardDef(id)?.name).join(','));
+                            } else if (d.type === 'canAgari') {
+                                GameState.koikoiPending = true;
+                                showAgariModal();
+                            } else if (d.type === 'agariDetail') {
+                                showAgariDetailModal(d);
+                            } else if (d.type === 'koikoiUsed') {
+                                GameState.playerKoikoiUsed[d.playerId] = true;
+                                addLog(`玩家 ${d.playerId.substring(0,6)} 已使用KoiKoi`);
+                            } else if (d.type === 'drawGame') {
+                                showDrawModal();
+                            }
+                        });
+                        conn.on('close', () => { addLog('断开连接'); location.reload(); });
+                    });
+                    conn.on('error', () => addLog('无法连接房间'));
+                });
+            }
+
+            function onHandClick(cardId) {
+                if (GameState.phase !== 'playing' || GameState.players[GameState.currentPlayerIndex] !== GameState.myPlayerId || GameState.koikoiPending) return;
+                const prev = GameState.selectedHandCard;
+                GameState.selectedHandCard = (prev === cardId) ? null : cardId;
+                if (GameState.selectedHandCard) AudioEngine.cardSelect(); else AudioEngine.uiClick();
+                renderField(); renderHand();
+            }
+
+            function onFieldClick(fieldCardId, index) {
+                if (!GameState.selectedHandCard || GameState.koikoiPending) return;
+                if (!canPair(GameState.selectedHandCard, fieldCardId)) return addLog('不能配对');
+                const handId = GameState.selectedHandCard;
+                GameState.selectedHandCard = null;
+                AudioEngine.pair();
+                if (GameState.isHost) {
+                    GameState.myHand = GameState.myHand.filter(id => id !== handId);
+                    removeFieldCardById(fieldCardId);
+                    GameState.myMelded.push(handId, fieldCardId);
+                    renderAll();
+                    sendAction({ action: 'pair', handCardId: handId, fieldCardId, fieldIndex: index }, 'pair');
+                } else {
+                    const hostConn = GameState.connections[GameState.players[0]];
+                    if (hostConn) hostConn.send(JSON.stringify({ type: 'playerAction', action: 'pair', handCardId: handId, fieldCardId, fieldIndex: index, playerId: GameState.myPlayerId }));
+                    GameState.myHand = GameState.myHand.filter(id => id !== handId);
+                    removeFieldCardById(fieldCardId);
+                    GameState.myMelded.push(handId, fieldCardId);
+                    renderAll();
+                }
+            }
+
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('btn') || e.target.closest('.btn')) {
+                    AudioEngine.uiClick();
+                }
+            });
+
+            document.getElementById('btn-create').onclick = createRoom;
+            document.getElementById('btn-join').onclick = joinRoom;
+            document.getElementById('btn-start').onclick = hostStartGame;
+            document.getElementById('hand-cards').addEventListener('contextmenu', e => {
+                e.preventDefault();
+                if (GameState.phase !== 'playing' || GameState.players[GameState.currentPlayerIndex] !== GameState.myPlayerId || GameState.koikoiPending) return;
+                const cardEl = e.target.closest('.card'); if (!cardEl) return;
+                const cardId = cardEl.dataset.cardId;
+                if (cardId && GameState.myHand.includes(cardId)) discardCard(cardId);
+            });
+
+            setupPeerAsClient();
+            addLog('🪭 和风花牌 - 选择人数并创建房间');
+        })();
+    </script>
+</body>
+</html>
