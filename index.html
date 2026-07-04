@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>风雅牌 - 花札风格收集游戏</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --gold: #c9a96e;
+            --red: #8b1a1a;
+            --panel: #2d2318;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: var(--bg);
+            font-family: 'Noto Serif SC', 'SimSun', serif;
+            min-height: 100vh;
+            color: #e8dcc8;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        #app {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+        #top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: #2d1f10;
+            border: 2px solid #5a3d20;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        #top-bar h1 {
+            font-size: 1.6em;
+            color: #e8c84c;
+        }
+        #room-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        #room-id-display {
+            font-size: 1.3em;
+            color: #e8c84c;
+            background: #1a0f05;
+            padding: 6px 16px;
+            border-radius: 8px;
+            border: 2px solid #5a3d20;
+        }
+        #deck-count-display {
+            font-size: 1em;
+            color: #e8c84c;
+            background: #1a0f05;
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 2px solid #5a3d20;
+        }
+        #scores-bar {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .score-item {
+            background: #1a0f05;
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 2px solid #5a3d20;
+            color: #e8c84c;
+            font-size: 0.9em;
+        }
+        #turn-display {
+            font-size: 1.1em;
+            color: #e8c84c;
+            background: #1a0f05;
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 2px solid #5a3d20;
+            white-space: nowrap;
+        }
+        .btn {
+            padding: 8px 18px;
+            border: 2px solid #8b6914;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #4a3520;
+            color: #e0c888;
+            font-family: inherit;
+            font-size: 0.95em;
+        }
+        .btn:hover {
+            background: #5e4428;
+            border-color: #c9a040;
+        }
+        .btn.accent {
+            background: #8b1a1a;
+            border-color: #c04040;
+        }
+        .btn.gold {
+            background: #b8860b;
+            border-color: #d4a030;
+            font-weight: bold;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 0.8em;
+        }
+        select,
+        input[type="text"] {
+            padding: 8px 14px;
+            border: 2px solid #5a3d20;
+            border-radius: 8px;
+            background: #1a0f05;
+            color: #e8c84c;
+            font-family: inherit;
+            text-align: center;
+        }
+        input[type="text"] {
+            width: 100px;
+        }
+        #game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+        }
+        /* 左侧栏（对手副露） */
+        #opponent-sidebar {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 300px;
+            background: rgba(20, 10, 3, 0.96);
+            border-right: 3px solid #5a3d20;
+            padding: 15px;
+            overflow-y: auto;
+            z-index: 50;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            flex-direction: column;
+        }
+        #opponent-sidebar h3 {
+            color: #e8c84c;
+            margin-bottom: 10px;
+        }
+        .sidebar-player-section {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #3d2818;
+            padding-bottom: 10px;
+        }
+        .sidebar-player-section h4 {
+            color: #c9a96e;
+            margin-bottom: 5px;
+        }
+        .sidebar-category {
+            margin-top: 5px;
+        }
+        .sidebar-category h5 {
+            font-size: 0.75em;
+            color: #e8c84c;
+            margin-bottom: 3px;
+        }
+        .sidebar-cards-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .sidebar-card-mini {
+            background: #f5e6d3;
+            border: 1px solid #8b6914;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.7em;
+            color: #2c1810;
+            white-space: nowrap;
+        }
+        /* 右侧栏（组合明细） */
+        #right-sidebar {
+            display: none;
+            position: fixed;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 300px;
+            background: rgba(20, 10, 3, 0.96);
+            border-left: 3px solid #5a3d20;
+            padding: 15px;
+            overflow-y: auto;
+            z-index: 50;
+            flex-direction: column;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.5);
+        }
+        #right-sidebar h3 {
+            color: #e8c84c;
+            margin-bottom: 10px;
+        }
+        .combo-detail-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(30, 18, 8, 0.8);
+            border: 1px solid #4a3020;
+            border-radius: 6px;
+        }
+        .combo-name {
+            display: block;
+            color: #e8c84c;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .combo-cards {
+            color: #c9a96e;
+            font-size: 0.85em;
+        }
+        /* 侧边栏触发按钮 */
+        #sidebar-toggle-btn {
+            position: fixed;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 60;
+            writing-mode: vertical-lr;
+            letter-spacing: 4px;
+            padding: 12px 8px;
+            background: #4a3520;
+            border: 2px solid #8b6914;
+            border-radius: 8px;
+            color: #e0c888;
+            cursor: pointer;
+        }
+        #sidebar-toggle-btn:hover {
+            background: #5e4428;
+            border-color: #c9a040;
+        }
+        #right-sidebar-toggle-btn {
+            position: fixed;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 60;
+            writing-mode: vertical-lr;
+            letter-spacing: 4px;
+            padding: 12px 8px;
+            background: #4a3520;
+            border: 2px solid #8b6914;
+            border-radius: 8px;
+            color: #e0c888;
+            cursor: pointer;
+        }
+        #right-sidebar-toggle-btn:hover {
+            background: #5e4428;
+            border-color: #c9a040;
+        }
+
+        #field-section {
+            background: rgba(25, 15, 5, 0.8);
+            border: 3px solid #5a3d20;
+            border-radius: 16px;
+            padding: 16px;
+        }
+        #field-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            min-height: 90px;
+        }
+        .card {
+            width: 72px;
+            height: 104px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 3px solid #8b6914;
+            background: #f5e6d3;
+            color: #2c1810;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72em;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+            position: relative;
+            transition: border-color 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-8px);
+            border-color: #e8c84c;
+        }
+        .card.selected {
+            border-color: #ff4444;
+            box-shadow: 0 0 25px rgba(255, 60, 60, 0.7);
+        }
+        .card.can-pair {
+            border-color: #ff4444;
+            box-shadow: 0 0 15px rgba(255, 60, 60, 0.5);
+        }
+        .card .card-icon {
+            font-size: 1.8em;
+        }
+        .card .card-name {
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+        .card .card-type-label {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 0.5em;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 1px 3px;
+            border-radius: 2px;
+            line-height: 1.2;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            writing-mode: vertical-lr;
+            text-orientation: upright;
+            max-height: 90%;
+        }
+        .card-stack {
+            position: relative;
+            display: inline-block;
+        }
+        .card-stack .card-under {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            opacity: 0.5;
+            transform: rotate(-2deg);
+        }
+        #hand-section {
+            background: rgba(20, 10, 3, 0.9);
+            border: 3px solid #5a3d20;
+            border-radius: 16px;
+            padding: 14px;
+        }
+        #hand-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        .hand-info {
+            margin-top: 8px;
+            font-size: 0.8em;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .hand-info .hand-orphan {
+            color: #ff8c8c;
+        }
+        .hand-info .hand-combos {
+            color: #e8c84c;
+        }
+        #selected-card-combos-list {
+            color: #a09080;
+        }
+        #melded-section {
+            background: rgba(20, 10, 3, 0.7);
+            border: 2px solid #4a3020;
+            border-radius: 12px;
+            padding: 10px;
+        }
+        .melded-category {
+            margin-bottom: 8px;
+        }
+        .melded-category h5 {
+            font-size: 0.8em;
+            color: #c9a96e;
+            margin-bottom: 4px;
+            border-bottom: 1px solid #4a3020;
+            padding-bottom: 2px;
+        }
+        .melded-category .cards-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        #my-combos {
+            margin-top: 8px;
+            font-size: 0.8em;
+            color: #e8c84c;
+        }
+        #orphan-info {
+            margin-top: 8px;
+            font-size: 0.8em;
+        }
+        .orphan-melded {
+            color: #ffaa55;
+        }
+        #score-panel {
+            background: rgba(20, 10, 3, 0.8);
+            border: 2px solid #5a3d20;
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            gap: 20px;
+        }
+        #log {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            max-width: 350px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid #3d2818;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 0.7em;
+            color: #a09080;
+            z-index: 100;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+        .modal {
+            background: #2d1f10;
+            border: 3px solid #8b6914;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            max-width: 500px;
+        }
+        .agari-detail {
+            text-align: left;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+        .agari-detail .score-formula {
+            font-size: 1.2em;
+            margin: 10px 0;
+            color: #e8c84c;
+        }
+        #btn-discard-selected {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="top-bar">
+            <h1>🪭 和风花牌</h1>
+            <div id="room-info">
+                <span id="room-id-display">未连接</span>
+                <span id="deck-count-display">牌堆: 0</span>
+                <select id="player-count-select"><option value="2">2人对战</option><option value="3">3人对战</option></select>
+                <input type="text" id="join-room-input" placeholder="房间号" maxlength="4" style="text-transform:uppercase">
+                <button class="btn" id="btn-join">加入房间</button>
+                <button class="btn accent" id="btn-create">创建房间</button>
+                <button class="btn" id="btn-start" disabled>开始游戏</button>
+                <button class="btn gold" id="btn-koikoi" style="display:none;">KoiKoi! 继续</button>
+                <button class="btn" id="btn-declare" style="display:none;">宣告达成</button>
+            </div>
+            <div id="scores-bar"></div>
+            <span id="turn-display">等待开始</span>
+        </div>
+        <div id="game-area" style="display:none;">
+            <!-- 左侧对手副露侧边栏 -->
+            <div id="opponent-sidebar">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3>对手副露</h3>
+                    <button class="btn btn-sm" onclick="toggleSidebar()">✕</button>
+                </div>
+                <div id="opponent-sidebar-content"></div>
+            </div>
+
+            <!-- 左侧触发按钮（固定） -->
+            <button id="sidebar-toggle-btn" onclick="toggleSidebar()">副露</button>
+
+            <!-- 右侧组合明细侧边栏 -->
+            <div id="right-sidebar">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3>组合明细</h3>
+                    <button class="btn btn-sm" onclick="toggleRightSidebar()">✕</button>
+                </div>
+                <div id="right-sidebar-content">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 右侧触发按钮（固定，初始隐藏） -->
+            <button id="right-sidebar-toggle-btn" onclick="toggleRightSidebar()">明细</button>
+
+            <!-- 游戏区域 -->
+            <div id="field-section"><h3>🏵️ 场上牌</h3><div id="field-cards"></div></div>
+            <div id="hand-section">
+                <h3>🃏 我的手牌</h3>
+                <button class="btn" id="btn-discard-selected" style="display:none;">弃置所选牌</button>
+                <div id="hand-cards"></div>
+                <div class="hand-info">
+                    <span class="hand-orphan">手牌孤牌: <span id="hand-orphan-list">无</span></span>
+                    <span class="hand-combos">手牌组合: <span id="hand-combos-list">暂无</span></span>
+                    <span id="selected-card-combos-list">点击手牌查看可参与的组合</span>
+                </div>
+            </div>
+            <div id="melded-section">
+                <h4>📋 我的副露</h4>
+                <div id="melded-cards"></div>
+                <div id="my-combos"></div>
+                <div id="orphan-info">
+                    <span class="orphan-melded">副露孤牌: <span id="melded-orphan-list">无</span></span>
+                </div>
+            </div>
+            <div id="score-panel"><span>🏆 得分预览</span><span id="score-value">副露0 × 手牌0 = 总分0</span></div>
+        </div>
+        <div id="log"></div>
+    </div>
+    <div id="modal-container"></div>
+
+    <!-- 按依赖顺序加载外部模块 -->
+    <script src="cards.js"></script>
+    <script src="game.js"></script>
+    <script src="network.js"></script>
+    <script>
+        // ========== 应用初始化 ==========
+        (function init() {
+            // 按钮事件绑定
+            document.getElementById('btn-create').onclick = createRoom;
+            document.getElementById('btn-join').onclick = joinRoom;
+            document.getElementById('btn-start').onclick = hostStartGame;
+            document.getElementById('btn-koikoi').onclick = doKoiKoi;
+            document.getElementById('btn-declare').onclick = declareAgari;
+
+            document.getElementById('btn-discard-selected').addEventListener('click', function() {
+                if (!GameState.selectedHandCard) return;
+                discardCard(GameState.selectedHandCard);
+            });
+
+            // 全局按钮点击音效
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('btn') || e.target.closest('.btn')) {
+                    AudioEngine.uiClick();
+                }
+            });
+
+            // 点击侧边栏外部空白区域收起侧边栏（除按钮外）
+            document.addEventListener('click', function(e) {
+                // 左侧栏
+                if (GameState.sidebarVisible && 
+                    !e.target.closest('#opponent-sidebar') && 
+                    !e.target.closest('#sidebar-toggle-btn')) {
+                    toggleSidebar();
+                }
+                // 右侧栏
+                if (GameState.rightSidebarVisible && 
+                    !e.target.closest('#right-sidebar') && 
+                    !e.target.closest('#right-sidebar-toggle-btn')) {
+                    toggleRightSidebar();
+                }
+            });
+
+            // 手牌右键快速弃置
+            document.getElementById('hand-cards').addEventListener('contextmenu', e => {
+                e.preventDefault();
+                if (GameState.phase !== 'playing' ||
+                    GameState.players[GameState.currentPlayerIndex] !== GameState.myPlayerId ||
+                    GameState.koikoiPending) return;
+                const cardEl = e.target.closest('.card');
+                if (!cardEl) return;
+                const cardId = cardEl.dataset.cardId;
+                if (cardId && GameState.myHand.includes(cardId)) {
+                    GameState.selectedHandCard = null;
+                    GameState.selectedCardCombos = [];
+                    discardCard(cardId);
+                }
+            });
+
+            // 初始化客户端（默认未连接状态）
+            setupPeerAsClient();
+            addLog('🪭 和风花牌 - 选择人数并创建房间');
+        })();
+    </script>
+</body>
+</html>
